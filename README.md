@@ -40,7 +40,7 @@ Ensure you have the following information ready:
 - VPC ID where you want to deploy the load balancer
 - Two public subnet IDs in different availability zones
 - Secret ARN in AWS Secrets Manager containing your API key
-- Default model ID (optional, defaults to `anthropic.claude-3-sonnet-20240229-v1:0`)
+- Default model ID (optional, defaults to `anthropic.claude-3-5-sonnet-20241022-v1:0`)
 
 ### 2. Create API Key Secret
 
@@ -99,7 +99,7 @@ curl -X POST "http://your-load-balancer-dns/api/v1/chat/completions" \
   -H "Authorization: Bearer your-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "model": "anthropic.claude-3-5-sonnet-20241022-v1:0",
     "messages": [
       {"role": "user", "content": "Hello, how are you?"}
     ]
@@ -113,7 +113,7 @@ curl -X POST "http://your-load-balancer-dns/api/v1/completions" \
   -H "Authorization: Bearer your-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "anthropic.claude-3-sonnet-20240229-v1:0",
+    "model": "anthropic.claude-3-5-sonnet-20241022-v1:0",
     "prompt": "Hello, how are you?",
     "max_tokens": 100
   }'
@@ -142,7 +142,7 @@ openai.api_key = "your-api-key-here"
 
 # Make a chat completion request
 response = openai.ChatCompletion.create(
-    model="anthropic.claude-3-sonnet-20240229-v1:0",
+    model="anthropic.claude-3-5-sonnet-20241022-v1:0",
     messages=[
         {"role": "user", "content": "Hello, how are you?"}
     ]
@@ -155,9 +155,9 @@ print(response.choices[0].message.content)
 
 The gateway supports all Amazon Bedrock foundation models. Some popular models include:
 
-- `anthropic.claude-3-sonnet-20240229-v1:0`
-- `anthropic.claude-3-haiku-20240307-v1:0`
-- `anthropic.claude-3-opus-20240229-v1:0`
+- `anthropic.claude-3-5-sonnet-20241022-v1:0`
+- `anthropic.claude-3-5-haiku-20241022-v1:0`
+- `anthropic.claude-3-5-opus-20241022-v1:0`
 - `amazon.titan-text-express-v1`
 - `meta.llama2-13b-chat-v1`
 - `cohere.embed-multilingual-v3`

@@ -11,12 +11,12 @@ Parameters:
   VpcId:
     Type: AWS::EC2::VPC::Id
     Description: The VPC ID where the load balancer will be deployed
-  Subnet1Id:
+  PublicSubnet1Id:
     Type: AWS::EC2::Subnet::Id
-    Description: The first subnet ID for the load balancer (can be public or private)
-  Subnet2Id:
+    Description: The first public subnet ID for the load balancer
+  PublicSubnet2Id:
     Type: AWS::EC2::Subnet::Id
-    Description: The second subnet ID for the load balancer (can be public or private)
+    Description: The second public subnet ID for the load balancer
   CreatedBy:
     Type: String
     Description: The name or identifier of who created this stack
@@ -128,8 +128,8 @@ Resources:
             - BedrockGatewaySecurityGroup
             - GroupId
       Subnets:
-        - Ref: Subnet1Id
-        - Ref: Subnet2Id
+        - Ref: PublicSubnet1Id
+        - Ref: PublicSubnet2Id
       Type: application
       Tags:
         - Key: CreatedBy

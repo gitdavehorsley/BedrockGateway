@@ -28,9 +28,26 @@ The solution deploys the following AWS resources:
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Existing VPC with at least 2 public subnets
+- Existing VPC with at least 2 subnets (public or private)
 - Amazon Bedrock access enabled in your AWS account
 - Docker image available in ECR (366590864501.dkr.ecr.[region].amazonaws.com/bedrock-proxy-api:latest)
+
+## Subnet Options
+
+The load balancer can be deployed in either public or private subnets:
+
+### Public Subnets
+- **Pros**: Direct internet access, no additional infrastructure needed
+- **Cons**: Less secure, exposed to internet
+- **Use case**: Development, testing, or when direct internet access is required
+
+### Private Subnets
+- **Pros**: More secure, isolated from direct internet access
+- **Cons**: Requires NAT Gateway or VPC Endpoints for internet connectivity
+- **Use case**: Production environments, enhanced security requirements
+- **Requirements**: 
+  - NAT Gateway for outbound internet access (if Lambda needs internet)
+  - VPC Endpoints for AWS services (Bedrock, Secrets Manager, etc.)
 
 ## Deployment
 
@@ -38,7 +55,7 @@ The solution deploys the following AWS resources:
 
 Ensure you have the following information ready:
 - VPC ID where you want to deploy the load balancer
-- Two public subnet IDs in different availability zones
+- Two subnet IDs in different availability zones (can be public or private)
 - Secret ARN in AWS Secrets Manager containing your API key
 - Default model ID (optional, defaults to `anthropic.claude-3-5-sonnet-20241022-v1:0`)
 
@@ -62,8 +79,8 @@ aws cloudformation create-stack \
     --parameters \
         ParameterKey=ApiKeySecretArn,ParameterValue=arn:aws:secretsmanager:region:account:secret:bedrock-gateway-api-key-xxxxx \
         ParameterKey=VpcId,ParameterValue=vpc-xxxxxxxxx \
-        ParameterKey=PublicSubnet1Id,ParameterValue=subnet-xxxxxxxxx \
-        ParameterKey=PublicSubnet2Id,ParameterValue=subnet-xxxxxxxxx \
+        ParameterKey=Subnet1Id,ParameterValue=subnet-xxxxxxxxx \
+        ParameterKey=Subnet2Id,ParameterValue=subnet-xxxxxxxxx \
         ParameterKey=CreatedBy,ParameterValue=your-name-or-team \
     --capabilities CAPABILITY_IAM
 ```

@@ -58,7 +58,7 @@ aws secretsmanager create-secret \
 ```bash
 aws cloudformation create-stack \
     --stack-name bedrock-gateway \
-    --template-body file://Description:\ Bedrock\ Access\ Gateway\ -\ Op.yaml \
+    --template-body file://bedrock-gateway.yaml \
     --parameters \
         ParameterKey=ApiKeySecretArn,ParameterValue=arn:aws:secretsmanager:region:account:secret:bedrock-gateway-api-key-xxxxx \
         ParameterKey=VpcId,ParameterValue=vpc-xxxxxxxxx \

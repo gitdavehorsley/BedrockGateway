@@ -67,8 +67,8 @@ Resources:
               Ref: ApiKeySecretArn
         Version: "2012-10-17"
       PolicyName: BedrockGatewayApiHandlerPolicy
-              Roles:
-          - Ref: BedrockGatewayApiHandlerRole
+      Roles:
+        - Ref: BedrockGatewayApiHandlerRole
   BedrockGatewayApiHandler:
     Type: AWS::Lambda::Function
     Properties:

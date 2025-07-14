@@ -14,60 +14,73 @@ The Bedrock Access Gateway provides a proxy service that translates OpenAI API r
 - **Application Inference Profiles**: Support for Bedrock application inference profiles
 - **Secure API Key Management**: Uses AWS Secrets Manager for API key storage
 - **Load Balancer**: Deployed behind an Application Load Balancer for high availability
-- **Existing Infrastructure**: Designed to work with existing VPC and subnet infrastructure
+- **Private VPC Deployment**: Designed for secure deployment in private subnets with VPC endpoints
+- **Resource Tagging**: All resources tagged with CreatedBy parameter for tracking
 
 ## Architecture
 
 The solution deploys the following AWS resources:
 
-- **Lambda Function**: Handles API requests and translates them to Bedrock calls
+- **ECS Fargate Service**: Handles API requests and translates them to Bedrock calls
 - **Application Load Balancer**: Provides HTTP endpoint and load balancing
-- **Security Group**: Controls network access to the load balancer
-- **IAM Roles & Policies**: Manages permissions for Bedrock and Secrets Manager access
+- **Security Groups**: Controls network access to the load balancer and ECS tasks
+- **IAM Roles & Policies**: Manages permissions for Bedrock, Secrets Manager, and ECR access
+- **VPC Endpoints**: For secure access to AWS services (Secrets Manager, ECR, CloudWatch Logs, Bedrock)
 
 ## Prerequisites
 
 - AWS CLI configured with appropriate permissions
-- Existing VPC with at least 2 subnets (public or private)
+- Existing VPC with at least 2 private subnets in different availability zones
 - Amazon Bedrock access enabled in your AWS account
-- Docker image available in ECR (366590864501.dkr.ecr.[region].amazonaws.com/bedrock-proxy-api:latest)
+- Docker image available in ECR (366590864501.dkr.ecr.[region].amazonaws.com/bedrock-proxy-api-ecs:latest)
+- VPC endpoints for AWS services (Secrets Manager, ECR, CloudWatch Logs, Bedrock) or NAT Gateway
 
-## Subnet Options
+## Deployment Architecture
 
-The load balancer can be deployed in either public or private subnets:
+The solution is designed for secure deployment in private subnets:
 
-### Public Subnets
-- **Pros**: Direct internet access, no additional infrastructure needed
-- **Cons**: Less secure, exposed to internet
-- **Use case**: Development, testing, or when direct internet access is required
+### Private Subnet Deployment
+- **ECS Tasks**: Deployed in private subnets for enhanced security
+- **Load Balancer**: Internal load balancer in private subnets
+- **Network Access**: Controlled via security groups and CIDR blocks
+- **AWS Service Access**: Via VPC endpoints or NAT Gateway
 
-### Private Subnets
-- **Pros**: More secure, isolated from direct internet access
-- **Cons**: Requires NAT Gateway or VPC Endpoints for internet connectivity
-- **Use case**: Production environments, enhanced security requirements
-- **Requirements**: 
-  - NAT Gateway for outbound internet access (if Lambda needs internet)
-  - VPC Endpoints for AWS services (Bedrock, Secrets Manager, etc.)
+### Required VPC Endpoints
+For optimal security and performance, ensure your VPC has endpoints for:
+- **Secrets Manager**: For API key retrieval
+- **ECR**: For container image pulls
+- **CloudWatch Logs**: For log streaming
+- **Bedrock**: For model inference calls
 
 ## Deployment
 
 ### 1. Prepare Your Environment
 
 Ensure you have the following information ready:
-- VPC ID where you want to deploy the load balancer
-- Two subnet IDs in different availability zones (can be public or private)
+- VPC ID where you want to deploy the gateway
+- At least 2 private subnet IDs in different availability zones
 - Secret ARN in AWS Secrets Manager containing your API key
 - Default model ID (optional, defaults to `anthropic.claude-3-5-sonnet-20241022-v1:0`)
+- Your name or team name for the CreatedBy tag
 
 ### 2. Create API Key Secret
 
-First, create a secret in AWS Secrets Manager to store your API key:
+First, create a secret in AWS Secrets Manager to store your API key in the correct JSON format:
 
 ```bash
+# Generate a random 16-character API key
+API_KEY=$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 16)
+
+# Create the secret with proper JSON format
 aws secretsmanager create-secret \
     --name "bedrock-gateway-api-key" \
     --description "API Key for Bedrock Gateway" \
-    --secret-string "your-api-key-here"
+    --secret-string "{\"api_key\":\"$API_KEY\"}"
+```
+
+**Important**: The secret must be stored in this exact JSON format:
+```json
+{"api_key":"your16charvalue"}
 ```
 
 ### 3. Deploy the CloudFormation Stack
@@ -75,12 +88,11 @@ aws secretsmanager create-secret \
 ```bash
 aws cloudformation create-stack \
     --stack-name bedrock-gateway \
-    --template-body file://bedrock-gateway.yaml \
+    --template-body file://bedrock-gateway-private-vpc.yaml \
     --parameters \
         ParameterKey=ApiKeySecretArn,ParameterValue=arn:aws:secretsmanager:region:account:secret:bedrock-gateway-api-key-xxxxx \
         ParameterKey=VpcId,ParameterValue=vpc-xxxxxxxxx \
-        ParameterKey=Subnet1Id,ParameterValue=subnet-xxxxxxxxx \
-        ParameterKey=Subnet2Id,ParameterValue=subnet-xxxxxxxxx \
+        ParameterKey=PrivateSubnetIds,ParameterValue="subnet-xxxxxxxxx,subnet-yyyyyyyyy" \
         ParameterKey=CreatedBy,ParameterValue=your-name-or-team \
     --capabilities CAPABILITY_IAM
 ```
@@ -172,7 +184,7 @@ print(response.choices[0].message.content)
 
 The gateway supports all Amazon Bedrock foundation models. Some popular models include:
 
-- `anthropic.claude-3-5-sonnet-20241022-v1:0`
+- `anthropic.claude-3-5-sonnet-20241022-v1:0` (default)
 - `anthropic.claude-3-5-haiku-20241022-v1:0`
 - `anthropic.claude-3-5-opus-20241022-v1:0`
 - `amazon.titan-text-express-v1`
@@ -181,27 +193,27 @@ The gateway supports all Amazon Bedrock foundation models. Some popular models i
 
 ## Configuration
 
-The Lambda function supports the following environment variables:
+The ECS container supports the following environment variables:
 
 - `DEBUG`: Enable debug logging (default: false)
-- `API_KEY_SECRET_ARN`: ARN of the secret containing the API key
-- `DEFAULT_MODEL`: Default model ID for requests
+- `DEFAULT_MODEL`: Default model ID for requests (default: anthropic.claude-3-5-sonnet-20241022-v1:0)
 - `DEFAULT_EMBEDDING_MODEL`: Default embedding model (default: cohere.embed-multilingual-v3)
 - `ENABLE_CROSS_REGION_INFERENCE`: Enable cross-region inference (default: true)
 - `ENABLE_APPLICATION_INFERENCE_PROFILES`: Enable application inference profiles (default: true)
 
 ## Security
 
-- API keys are stored securely in AWS Secrets Manager
+- API keys are stored securely in AWS Secrets Manager with proper JSON format
 - All resources are tagged with a `CreatedBy` tag for tracking
-- The load balancer is deployed in public subnets but can be secured with additional security groups
+- ECS tasks run in private subnets for enhanced security
 - IAM roles follow the principle of least privilege
+- Network access controlled via security groups and CIDR blocks
 
 ## Monitoring
 
 Monitor your deployment using:
 
-- CloudWatch Logs for the Lambda function
+- CloudWatch Logs for the ECS tasks
 - CloudWatch Metrics for the Application Load Balancer
 - CloudTrail for API calls to Bedrock
 
@@ -209,17 +221,28 @@ Monitor your deployment using:
 
 ### Common Issues
 
-1. **Lambda timeout**: Increase the timeout value in the CloudFormation template
-2. **Permission denied**: Ensure the Lambda role has proper Bedrock permissions
-3. **Model not found**: Verify the model ID is available in your AWS region
-4. **Network connectivity**: Check security group rules and VPC configuration
+1. **Secret format error**: Ensure the secret is stored in correct JSON format `{"api_key":"value"}`
+2. **Network connectivity**: Check VPC endpoints or NAT Gateway configuration
+3. **Permission denied**: Ensure the ECS task role has proper Bedrock permissions
+4. **Model not found**: Verify the model ID is available in your AWS region
+5. **Container pull failures**: Check ECR permissions and VPC endpoint configuration
 
 ### Logs
 
-View Lambda function logs:
+View ECS task logs:
 
 ```bash
-aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/ProxyApiHandler"
+aws logs describe-log-groups --log-group-name-prefix "/ecs/BedrockProxyFargate"
+```
+
+### Updating API Key
+
+To update the API key with a new random value:
+
+```bash
+aws secretsmanager put-secret-value \
+    --secret-id YOUR_SECRET_ARN \
+    --secret-string "{\"api_key\":\"$(openssl rand -base64 12 | tr -dc 'a-zA-Z0-9' | head -c 16)\"}"
 ```
 
 ## Contributing
@@ -240,9 +263,11 @@ For issues and questions:
 - Create an issue in this repository
 - Check the CloudWatch logs for detailed error information
 - Verify your AWS account has Bedrock access enabled
+- Ensure VPC endpoints are properly configured
 
 ## Related Links
 
 - [Amazon Bedrock Documentation](https://docs.aws.amazon.com/bedrock/)
 - [OpenAI API Documentation](https://platform.openai.com/docs/api-reference)
-- [AWS CloudFormation Documentation](https://docs.aws.amazon.com/cloudformation/) 
+- [AWS CloudFormation Documentation](https://docs.aws.amazon.com/cloudformation/)
+- [AWS VPC Endpoints Documentation](https://docs.aws.amazon.com/vpc/latest/privatelink/vpc-endpoints.html) 

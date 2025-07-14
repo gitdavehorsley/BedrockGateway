@@ -24,6 +24,9 @@ Parameters:
     Description: The port on which the API will be exposed
     MinValue: 1
     MaxValue: 65535
+  CreatedBy:
+    Type: String
+    Description: The name or identifier of who created this stack
 
 Resources:
   ProxyExecRole6947A5BE:
@@ -36,6 +39,10 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
         Version: "2012-10-17"
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyExecRoleDefaultPolicyED41DFE7:
     Type: AWS::IAM::Policy
@@ -86,6 +93,10 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
         Version: "2012-10-17"
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyTaskRoleDefaultPolicy933321B8:
     Type: AWS::IAM::Policy
@@ -112,6 +123,11 @@ Resources:
 
   ProxyBedrockCluster893F4261:
     Type: AWS::ECS::Cluster
+    Properties:
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyBedrockClusterD9C31EFF:
     Type: AWS::ECS::ClusterCapacityProviderAssociations
@@ -177,6 +193,10 @@ Resources:
         Fn::GetAtt:
           - ProxyTaskRole5DB6A540
           - Arn
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyApiServiceSecurityGroup51EBD9B8:
     Type: AWS::EC2::SecurityGroup
@@ -188,6 +208,10 @@ Resources:
           IpProtocol: "-1"
       VpcId:
         Ref: VpcId
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyApiServiceSecurityGroupfromALB:
     Type: AWS::EC2::SecurityGroupIngress
@@ -221,6 +245,10 @@ Resources:
       Subnets:
         Ref: PrivateSubnetIds
       Type: application
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyALBSecurityGroup0D6CA3DA:
     Type: AWS::EC2::SecurityGroup
@@ -236,6 +264,10 @@ Resources:
             Ref: ApiPort
       VpcId:
         Ref: VpcId
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyALBSecurityGrouptoECS:
     Type: AWS::EC2::SecurityGroupEgress
@@ -265,6 +297,10 @@ Resources:
       Port:
         Ref: ApiPort
       Protocol: HTTP
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyALBListenerTargetsGroup187739FA:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -281,6 +317,10 @@ Resources:
       TargetType: ip
       VpcId:
         Ref: VpcId
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
 
   ProxyApiService8651D882:
     Type: AWS::ECS::Service
@@ -316,6 +356,10 @@ Resources:
             Ref: PrivateSubnetIds
       TaskDefinition:
         Ref: ProxyTaskDef9F2A72E5
+      Tags:
+        - Key: CreatedBy
+          Value:
+            Ref: CreatedBy
     DependsOn:
       - ProxyALBListener933E9515
       - ProxyALBListenerTargetsGroup187739FA

@@ -22,7 +22,7 @@ Parameters:
     Description: The name or identifier of who created this stack
     Default: CloudFormation
 Resources:
-  ProxyApiHandlerServiceRoleBE71BFB1:
+  BedrockGatewayApiHandlerRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -41,7 +41,7 @@ Resources:
       Tags:
         - Key: CreatedBy
           Value: !Ref CreatedBy
-  ProxyApiHandlerServiceRoleDefaultPolicy86681202:
+  BedrockGatewayApiHandlerPolicy:
     Type: AWS::IAM::Policy
     Properties:
       PolicyDocument:
@@ -66,10 +66,10 @@ Resources:
             Resource:
               Ref: ApiKeySecretArn
         Version: "2012-10-17"
-      PolicyName: ProxyApiHandlerServiceRoleDefaultPolicy86681202
-      Roles:
-        - Ref: ProxyApiHandlerServiceRoleBE71BFB1
-  ProxyApiHandlerEC15A492:
+      PolicyName: BedrockGatewayApiHandlerPolicy
+              Roles:
+          - Ref: BedrockGatewayApiHandlerRole
+  BedrockGatewayApiHandler:
     Type: AWS::Lambda::Function
     Properties:
       Architectures:
@@ -98,25 +98,25 @@ Resources:
       PackageType: Image
       Role:
         Fn::GetAtt:
-          - ProxyApiHandlerServiceRoleBE71BFB1
+          - BedrockGatewayApiHandlerRole
           - Arn
       Timeout: 600
       Tags:
         - Key: CreatedBy
           Value: !Ref CreatedBy
     DependsOn:
-      - ProxyApiHandlerServiceRoleDefaultPolicy86681202
-      - ProxyApiHandlerServiceRoleBE71BFB1
-  ProxyApiHandlerInvoke2UTWxhlfyqbT5FTn5jvgbLgjFfJwzswGk55DU1HYF6C33779:
+      - BedrockGatewayApiHandlerPolicy
+      - BedrockGatewayApiHandlerRole
+  BedrockGatewayApiHandlerInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
         Fn::GetAtt:
-          - ProxyApiHandlerEC15A492
+          - BedrockGatewayApiHandler
           - Arn
       Principal: elasticloadbalancing.amazonaws.com
-  ProxyALB87756780:
+  BedrockGatewayLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       LoadBalancerAttributes:
@@ -125,7 +125,7 @@ Resources:
       Scheme: internet-facing
       SecurityGroups:
         - Fn::GetAtt:
-            - ProxyALBSecurityGroup0D6CA3DA
+            - BedrockGatewaySecurityGroup
             - GroupId
       Subnets:
         - Ref: PublicSubnet1Id
@@ -135,8 +135,8 @@ Resources:
         - Key: CreatedBy
           Value: !Ref CreatedBy
     DependsOn:
-      - ProxyALBSecurityGroup0D6CA3DA
-  ProxyALBSecurityGroup0D6CA3DA:
+      - BedrockGatewaySecurityGroup
+  BedrockGatewaySecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Automatically created Security Group for ELB BedrockProxyALB1CE4CAD1
@@ -157,18 +157,18 @@ Resources:
       Tags:
         - Key: CreatedBy
           Value: !Ref CreatedBy
-  ProxyALBListener933E9515:
+  BedrockGatewayListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
       DefaultActions:
         - TargetGroupArn:
-            Ref: ProxyALBListenerTargetsGroup187739FA
+            Ref: BedrockGatewayTargetGroup
           Type: forward
       LoadBalancerArn:
-        Ref: ProxyALB87756780
+        Ref: BedrockGatewayLoadBalancer
       Port: 80
       Protocol: HTTP
-  ProxyALBListenerTargetsGroup187739FA:
+  BedrockGatewayTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
       HealthCheckEnabled: false
@@ -176,13 +176,13 @@ Resources:
       Targets:
         - Id:
             Fn::GetAtt:
-              - ProxyApiHandlerEC15A492
+              - BedrockGatewayApiHandler
               - Arn
       Tags:
         - Key: CreatedBy
           Value: !Ref CreatedBy
     DependsOn:
-      - ProxyApiHandlerInvoke2UTWxhlfyqbT5FTn5jvgbLgjFfJwzswGk55DU1HYF6C33779
+      - BedrockGatewayApiHandlerInvokePermission
 Outputs:
   APIBaseUrl:
     Description: Proxy API Base URL (OPENAI_API_BASE)
@@ -191,6 +191,6 @@ Outputs:
         - ""
         - - http://
           - Fn::GetAtt:
-              - ProxyALB87756780
+              - BedrockGatewayLoadBalancer
               - DNSName
           - /api/v1
